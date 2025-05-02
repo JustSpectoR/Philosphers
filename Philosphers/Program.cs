@@ -1,6 +1,8 @@
-﻿using System.Xml;
+﻿using System.Text;
+using System.Xml;
 
-namespace philosophers_os
+
+namespace philosphers
 {
     class Fork
     {
@@ -159,25 +161,48 @@ namespace philosophers_os
 
     class Program
     {
+        [STAThread]
         static void Main(string[] args)
         {
+            // Использование кодировки UTF-8
+            Console.OutputEncoding = Encoding.UTF8;
+
 
             // Загрузка конфигурации из XML
             Console.WriteLine("Импортируем настройки");
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.Load("C:/MyStuff/csharp/philosophers.xml");  // предполагается, что файл лежит рядом с исполняемым
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "XML Files|*.xml";
+            openFileDialog.Title = "Выберите XML файл";
 
-            // Получаем количество пользователей
-            int count = int.Parse(xmlDoc.SelectSingleNode("settings/users").InnerText);
-            Console.WriteLine("Пользователей: " + count);
+            string filePath;
+            int count; bool verbal; int duration;
 
-            // Получаем настройки вывода информации
-            bool verbal = bool.Parse(xmlDoc.SelectSingleNode("settings/verbal_mode").InnerText);
-            Console.WriteLine("Подробное описание? " + verbal);
+            // Если выбран файл - пытаемся загрузить из него
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    Console.WriteLine("Получен файл, загружаю его");
+                    filePath = openFileDialog.FileName;
+                    (count, verbal, duration) = LoadSettings(filePath);
+                }
+                catch
+                {
+                    Console.WriteLine("Ошибка при загрузке файла, загружаю по настройкам из ресурсов");
+                    filePath = "Settings.xml";
+                    (count, verbal, duration) = LoadSettings(filePath);
+                }
 
-            // Получаем длительность работы
-            int duration = int.Parse(xmlDoc.SelectSingleNode("settings/timer").InnerText);
-            Console.WriteLine("Длительность работы: " + duration);
+
+            }
+            // Иначе используем из настроек по умолчанию
+            else
+            {
+                Console.WriteLine("Не удалось загрузить файл, загружаю по настройкам из ресурсов");
+                filePath = "Settings.xml";
+                (count, verbal, duration) = LoadSettings(filePath);
+            }
+
 
             // Добавляем вилки
             Fork[] forks = new Fork[count];
@@ -203,6 +228,36 @@ namespace philosophers_os
             for (int i = 0; i < count; i++) runners[i].Join();
 
             for (int i = 0; i < count; i++) phils[i].PrintStats();
+
+        }
+
+        /// <summary>
+        /// Загрузка настроек
+        /// </summary>
+        /// <param name="filePath">Путь до файла</param>
+        /// <returns></returns>
+        static (int, bool, int) LoadSettings(string filePath)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.Load(filePath);  // предполагается, что файл лежит рядом с исполняемым
+
+            Console.WriteLine(xmlDoc.BaseURI);
+
+            // Получаем количество пользователей
+            int count = int.Parse(xmlDoc.SelectSingleNode("settings/users").InnerText);
+
+
+            // Получаем настройки вывода информации
+            bool verbal = bool.Parse(xmlDoc.SelectSingleNode("settings/verbal_mode").InnerText);
+
+
+            // Получаем длительность работы
+            int duration = int.Parse(xmlDoc.SelectSingleNode("settings/timer").InnerText);
+
+            Console.WriteLine("Пользователей: " + count);
+            Console.WriteLine("Подробное описание? " + verbal);
+            Console.WriteLine("Длительность работы: " + duration);
+            return (count, verbal, duration);
         }
     }
 }
